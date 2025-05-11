@@ -3,3 +3,5 @@
 /workspace.xml
 
 google_api.json
+application.properties
+google-drive.properties
