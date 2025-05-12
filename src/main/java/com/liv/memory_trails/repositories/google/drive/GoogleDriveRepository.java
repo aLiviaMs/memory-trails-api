@@ -5,6 +5,7 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.gson.Gson;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -16,26 +17,18 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Repository
+@Slf4j
 public class GoogleDriveRepository {
     private static final String UPLOAD_URL = "https://www.googleapis.com/upload/drive/v3/files";
     private static final String FILES_URL = "https://www.googleapis.com/drive/v3/files";
     private static final String CREDENTIALS_FILE_PATH = "/google_api.json";
+    private static final String SCOPE = "https://www.googleapis.com/auth/drive";
 
     private final HttpRequestFactory requestFactory;
     private final Gson gson = new Gson();
 
     public GoogleDriveRepository() throws IOException {
-        // Carrega as credenciais do arquivo JSON de service account
-        InputStream credentialsStream = getClass().getResourceAsStream(CREDENTIALS_FILE_PATH);
-        if (credentialsStream == null) {
-            throw new IOException("Arquivo de credenciais não encontrado: " + CREDENTIALS_FILE_PATH);
-        }
-
-        GoogleCredentials credentials = GoogleCredentials.fromStream(credentialsStream)
-                .createScoped(Collections.singletonList("https://www.googleapis.com/auth/drive"));
-
-        // Cria o HttpRequestFactory usando a autenticação por credentials
-        this.requestFactory = new NetHttpTransport().createRequestFactory(new HttpCredentialsAdapter(credentials));
+        requestFactory = createRequestFactory();
     }
 
     /**
@@ -54,9 +47,7 @@ public class GoogleDriveRepository {
      */
     public String uploadFile(MultipartFile file, String folderId, String fileName, String contentType) throws IOException {
         // Criação dos metadados
-        Map<String, Object> metadataMap = new HashMap<>();
-        metadataMap.put("name", fileName);
-        metadataMap.put("parents", Collections.singletonList(folderId));
+        Map<String, Object> metadataMap = createMetadata(fileName, folderId);
         String metadata = gson.toJson(metadataMap);
 
         // Construir a URL para o upload
@@ -64,6 +55,47 @@ public class GoogleDriveRepository {
         url.put("uploadType", "multipart");
 
         // Construir o corpo multipart
+        MultipartContent content = createMultipartContent(file, fileName, metadata, contentType);
+
+        // Cria a requisição POST para upload
+        HttpRequest request = requestFactory.buildPostRequest(url, content);
+        request.getHeaders().set("Accept", "application/json");
+
+        // Executa a requisição
+        HttpResponse response = request.execute();
+
+        validateResponse(response);
+
+        // Parse do JSON para obter o ID do arquivo
+        String jsonResponse = response.parseAsString();
+        Map<String, Object> responseMap = gson.fromJson(jsonResponse, Map.class);
+        log.info("Arquivo enviado com sucesso, ID: {}", responseMap.get("id"));
+
+        return (String) responseMap.get("id");
+    }
+
+    private HttpRequestFactory createRequestFactory() throws IOException {
+        // Carrega as credenciais do arquivo JSON de service account
+        InputStream credentialsStream = getClass().getResourceAsStream(CREDENTIALS_FILE_PATH);
+        if (credentialsStream == null) {
+            throw new IOException("Arquivo de credenciais não encontrado: " + CREDENTIALS_FILE_PATH);
+        }
+
+        GoogleCredentials credentials = GoogleCredentials.fromStream(credentialsStream)
+                .createScoped(Collections.singletonList(SCOPE));
+
+        // Cria o HttpRequestFactory usando a autenticação por credentials
+        return new NetHttpTransport().createRequestFactory(new HttpCredentialsAdapter(credentials));
+    }
+
+    private Map<String, Object> createMetadata(String fileName, String folderId) {
+        Map<String, Object> metadataMap = new HashMap<>();
+        metadataMap.put("name", fileName);
+        metadataMap.put("parents", Collections.singletonList(folderId));
+        return metadataMap;
+    }
+
+    private MultipartContent createMultipartContent(MultipartFile file, String fileName, String metadata, String contentType) throws IOException {
         MultipartContent content = new MultipartContent();
         content.setBoundary("BOUNDARY_STRING");
 
@@ -75,31 +107,20 @@ public class GoogleDriveRepository {
         content.addPart(metadataPart);
 
         // Parte 2: Conteúdo do arquivo
-        HttpContent mediaContent = new ByteArrayContent(
-                contentType, file.getBytes());
+        HttpContent mediaContent = new ByteArrayContent(contentType, file.getBytes());
         MultipartContent.Part mediaPart = new MultipartContent.Part(mediaContent);
         mediaPart.setHeaders(new HttpHeaders().set("Content-Disposition",
                 "form-data; name=\"file\"; filename=\"" + fileName + "\""));
         content.addPart(mediaPart);
 
-        // Cria a requisição POST para upload
-        HttpRequest request = requestFactory.buildPostRequest(url, content);
-        request.getHeaders().set("Accept", "application/json");
+        return content;
+    }
 
-        // Executa a requisição
-        HttpResponse response = request.execute();
-
+    private void validateResponse(HttpResponse response) throws IOException {
         if (!response.isSuccessStatusCode()) {
             String errorContent = response.parseAsString();
             throw new IOException("Falha no upload do arquivo: " + response.getStatusMessage() +
                     " - Detalhes: " + errorContent);
         }
-
-        // Parse do JSON para obter o ID do arquivo
-        String jsonResponse = response.parseAsString();
-        Map<String, Object> responseMap = gson.fromJson(jsonResponse, Map.class);
-        System.out.println("teste: " + responseMap.get("id"));
-
-        return (String) responseMap.get("id");
     }
 }
