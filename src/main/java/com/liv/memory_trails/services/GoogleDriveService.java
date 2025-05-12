@@ -56,6 +56,13 @@ public class GoogleDriveService {
         return googleDriveRepository.listFiles();
     }
 
+    public void deleteFile(String fileId) throws IOException {
+        if (fileId == null || fileId.isEmpty()) {
+            throw new IllegalArgumentException("O ID do arquivo não pode ser nulo ou vazio.");
+        }
+        googleDriveRepository.deleteFile(fileId);
+    }
+
     private void validateFile(MultipartFile multipartFile) {
         if (multipartFile == null || multipartFile.isEmpty()) {
             throw new IllegalArgumentException("O arquivo está vazio ou não foi enviado.");

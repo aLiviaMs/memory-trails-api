@@ -35,7 +35,8 @@ public class GoogleDriveRepository {
      * Lista arquivos no Google Drive.
      */
     public String listFiles() throws IOException {
-        GenericUrl url = new GenericUrl(FILES_URL);
+        // TODO: remove the harded code filters on future
+        GenericUrl url = new GenericUrl(FILES_URL + "?q=mimeType != 'application/vnd.google-apps.folder'");
         HttpRequest request = requestFactory.buildGetRequest(url);
         request.getHeaders().set("Accept", "application/json");
         HttpResponse response = request.execute();
@@ -72,6 +73,30 @@ public class GoogleDriveRepository {
         log.info("Arquivo enviado com sucesso, ID: {}", responseMap.get("id"));
 
         return (String) responseMap.get("id");
+    }
+
+    /**
+     * Deleta um arquivo do Google Drive.
+     * @param fileId ID do arquivo a ser deletado.
+     */
+    public void deleteFile(String fileId) throws IOException {
+        String deleteURL = FILES_URL + "/" + fileId;
+        GenericUrl url = new GenericUrl(deleteURL);
+        HttpRequest request = requestFactory.buildDeleteRequest(url);
+
+        try {
+            HttpResponse response = request.execute();
+            if (response.isSuccessStatusCode() || response.getStatusCode() == 204) {
+                log.info("Arquivo deletado com sucesso. ID: {}", fileId);
+            } else {
+                String errorContent = response.parseAsString();
+                log.error("Falha ao deletar o arquivo: {} - Detalhes: {}", response.getStatusMessage(), errorContent);
+                throw new IOException("Falha ao deletar o arquivo: " + response.getStatusMessage() + " - Detalhes: " + errorContent);
+            }
+        } catch (HttpResponseException e) {
+            log.error("Erro ao deletar o arquivo: ", e);
+            throw new IOException("Erro ao deletar o arquivo: " + e.getMessage(), e);
+        }
     }
 
     private HttpRequestFactory createRequestFactory() throws IOException {

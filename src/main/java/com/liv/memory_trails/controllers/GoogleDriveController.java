@@ -2,6 +2,7 @@ package com.liv.memory_trails.controllers;
 
 import com.liv.memory_trails.services.GoogleDriveService;
 import lombok.AllArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -46,6 +47,18 @@ public class GoogleDriveController {
             return ResponseEntity.ok(files);
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Erro ao listar arquivos: " + e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/delete/{fileId}")
+    public ResponseEntity<String> deleteFile(@PathVariable String fileId) {
+        try {
+            googleDriveService.deleteFile(fileId);
+            return ResponseEntity.ok("Arquivo deletado com sucesso.");
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro ao deletar o arquivo: " + e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
 }
