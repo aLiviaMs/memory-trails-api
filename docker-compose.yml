@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  postgres_db:
+    image: postgres:15-alpine
+    container_name: memory_trails_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${DATABASE_USER:-user_records}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-password_records}
+      POSTGRES_DB: ${DATABASE_NAME:-db_records}
+    ports:
+      - '${DATABASE_PORT:-5432}:5432'
+    volumes:
+      - postgres_data_memory_trails:/var/lib/postgresql/data
+
+volumes:
+  postgres_data_memory_trails:
