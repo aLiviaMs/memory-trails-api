@@ -1,14 +1,19 @@
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Delete,
   Get,
   Param,
+  ParseIntPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
+import { PaginatedResult } from '../common/interfaces/paginated-result.interface';
 import { CreateRecordDto } from './dto/create-record.dto';
 import { UpdateRecordDto } from './dto/update-record.dto';
+import { Record } from './entities/record.entity';
 import { RecordsService } from './records.service';
 
 @Controller('records')
@@ -21,22 +26,28 @@ export class RecordsController {
   }
 
   @Get()
-  findAll() {
-    return this.recordsService.findAll();
+  async findAll(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
+    @Query('size', new DefaultValuePipe(10), ParseIntPipe) size: number = 10,
+  ): Promise<PaginatedResult<Record>> {
+    return this.recordsService.findAll({ page, size });
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.recordsService.findOne(+id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.recordsService.findOne(id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateRecordDto: UpdateRecordDto) {
-    return this.recordsService.update(+id, updateRecordDto);
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateRecordDto: UpdateRecordDto,
+  ) {
+    return this.recordsService.update(id, updateRecordDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.recordsService.remove(+id);
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.recordsService.remove(id);
   }
 }

@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { PaginatedResult } from '../common/interfaces/paginated-result.interface';
+import { PaginationOptions } from '../common/interfaces/pagination-options.interface';
 import { CreateRecordDto } from './dto/create-record.dto';
 import { UpdateRecordDto } from './dto/update-record.dto';
 import { Record } from './entities/record.entity';
@@ -22,8 +24,28 @@ export class RecordsService {
     return this.recordRepository.save(newRecord);
   }
 
-  async findAll(): Promise<Record[]> {
-    return this.recordRepository.find();
+  async findAll(options: PaginationOptions): Promise<PaginatedResult<Record>> {
+    const { page, size } = options;
+
+    const validatedPage = page > 0 ? page : 1;
+    const validatedSize = size > 0 ? size : 10;
+
+    const skip = (validatedPage - 1) * validatedSize;
+
+    const [result, total] = await this.recordRepository.findAndCount({
+      take: validatedSize,
+      skip: skip,
+      order: {
+        id: 'ASC',
+      },
+    });
+
+    return {
+      data: result,
+      count: total,
+      currentPage: validatedPage,
+      totalPages: Math.ceil(total / validatedSize),
+    };
   }
 
   async findOne(id: number): Promise<Record> {
