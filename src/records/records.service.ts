@@ -25,7 +25,7 @@ export class RecordsService {
   }
 
   async findAll(options: PaginationOptions): Promise<PaginatedResult<Record>> {
-    const { page, size } = options;
+    const { page, size, sortBy } = options;
 
     const validatedPage = page > 0 ? page : 1;
     const validatedSize = size > 0 ? size : 10;
@@ -36,7 +36,7 @@ export class RecordsService {
       take: validatedSize,
       skip: skip,
       order: {
-        datePublished: 'ASC',
+        datePublished: sortBy ?? 'ASC',
       },
     });
 

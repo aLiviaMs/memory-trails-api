@@ -29,8 +29,10 @@ export class RecordsController {
   async findAll(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
     @Query('size', new DefaultValuePipe(10), ParseIntPipe) size: number = 10,
+    @Query('sortBy', new DefaultValuePipe('ASC'))
+    sortBy: 'ASC' | 'DESC' = 'ASC',
   ): Promise<PaginatedResult<Record>> {
-    return this.recordsService.findAll({ page, size });
+    return this.recordsService.findAll({ page, size, sortBy });
   }
 
   @Get(':id')
