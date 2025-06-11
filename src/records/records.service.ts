@@ -36,7 +36,7 @@ export class RecordsService {
       take: validatedSize,
       skip: skip,
       order: {
-        id: 'ASC',
+        datePublished: 'ASC',
       },
     });
 
