@@ -1,6 +1,5 @@
 import {
   Injectable,
-  Logger,
   InternalServerErrorException,
   BadRequestException,
 } from '@nestjs/common';
@@ -37,23 +36,31 @@ export class GoogleDriveService {
     this.drive = google.drive({ version: 'v3', auth });
   }
 
-  async listFiles(folderId?: string): Promise<drive_v3.Schema$File[]> {
-    const parentFolderId = folderId ?? this.rootFolderId as string;
+  async listFiles(
+    folderId?: string,
+    pageSize: number = 100,
+    pageToken?: string,
+    orderBy: string = 'folder, name',
+  ): Promise<{ files: drive_v3.Schema$File[]; nextPageToken: string | null | undefined }> {
+    const parentFolderId = folderId ?? (this.rootFolderId as string);
 
     try {
       const res = await this.drive.files.list({
         q: `'${parentFolderId}' in parents and trashed = false`,
         fields:
-          'files(id, name, mimeType, createdTime, modifiedTime, parents, webViewLink, iconLink, size)',
-        orderBy: 'folder, name',
-        pageSize: 100,
-      });
+          'nextPageToken, files(id, name, mimeType, createdTime, modifiedTime, parents, webViewLink, iconLink, size)',
+        orderBy,
+        pageSize,
+        pageToken,
+      });1
 
-      return res.data.files || [];
-    } catch (error) {
+      return {
+        files: res.data.files || [],
+        nextPageToken: (res.data.nextPageToken as string | null | undefined),
+      };
+    } catch {
       throw new InternalServerErrorException(
         'Erro ao listar arquivos no Google Drive.',
-        error
       );
     }
   }
@@ -66,7 +73,7 @@ export class GoogleDriveService {
       throw new BadRequestException('O nome da pasta é obrigatório.');
     }
 
-    const parentFolderId = parentId ?? this.rootFolderId as string;
+    const parentFolderId = parentId ?? (this.rootFolderId as string);
 
     const fileMetadata: drive_v3.Schema$File = {
       name: folderName,
@@ -81,7 +88,7 @@ export class GoogleDriveService {
       });
 
       return res.data;
-    } catch (error) {
+    } catch {
       throw new InternalServerErrorException(
         'Erro ao criar pasta no Google Drive.',
       );
@@ -96,9 +103,9 @@ export class GoogleDriveService {
       throw new BadRequestException('Nenhum arquivo fornecido para upload.');
     }
 
-    const parentFolderId = folderId ?? this.rootFolderId as string;
+    const parentFolderId = folderId ?? (this.rootFolderId as string);
     const fileMetadata: drive_v3.Schema$File = {
-      name: file.originalname as string,
+      name: file.originalname,
       parents: [parentFolderId],
     };
 
@@ -119,10 +126,11 @@ export class GoogleDriveService {
       }
 
       return res.data;
-    } catch (error) {
+    } catch {
       if (file.path) {
-        unlinkSync(file.path); 
+        unlinkSync(file.path);
       }
+
       throw new InternalServerErrorException(
         'Erro ao fazer upload do arquivo para o Google Drive.',
       );
@@ -142,7 +150,7 @@ export class GoogleDriveService {
       });
 
       return res.data;
-    } catch (error) {
+    } catch {
       throw new InternalServerErrorException(
         'Erro ao obter metadados do arquivo no Google Drive.',
       );
@@ -160,7 +168,7 @@ export class GoogleDriveService {
       await this.drive.files.delete({
         fileId: fileId,
       });
-    } catch (error) {
+    } catch {
       throw new InternalServerErrorException(
         'Erro ao deletar arquivo/pasta no Google Drive.',
       );

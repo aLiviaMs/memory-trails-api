@@ -1,32 +1,43 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseFilePipe,
+  Post,
   Query,
   UploadedFile,
   UseInterceptors,
-  ParseFilePipe,
-  Param,
-  Delete,
-  HttpCode,
-  HttpStatus,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { GoogleDriveService } from './google-drive.service';
-import { Express } from 'express'; 
 import { drive_v3 } from 'googleapis';
-import { CreateFolderDto } from './dto/create-folder.dto'
+import { CreateFolderDto } from './dto/create-folder.dto';
+import { GoogleDriveService } from './google-drive.service';
 
-@Controller('google-drive')
+@Controller('drive')
 export class GoogleDriveController {
   constructor(private readonly googleDriveService: GoogleDriveService) {}
 
   @Get('files')
   async listFiles(
     @Query('folderId') folderId?: string,
-  ): Promise<drive_v3.Schema$File[]> {
-    return this.googleDriveService.listFiles(folderId);
+    @Query('pageSize') pageSize?: string,
+    @Query('pageToken') pageToken?: string,
+    @Query('orderBy') orderBy?: string
+  ): Promise<{ files: drive_v3.Schema$File[], nextPageToken?: string | null | undefined }> {
+    // Converte pageSize para número ou usa valor padrão
+    const parsedPageSize = pageSize ? parseInt(pageSize, 10) : 100;
+    const resolvedOrderBy = orderBy || 'folder, name';
+
+    return this.googleDriveService.listFiles(
+      folderId,
+      parsedPageSize,
+      pageToken,
+      resolvedOrderBy
+    );
   }
 
   @Get('files/:id')
@@ -44,16 +55,16 @@ export class GoogleDriveController {
     return this.googleDriveService.createFolder(folderName, parentId);
   }
 
-  @Post('files/upload')
-  @UseInterceptors(FileInterceptor('file')) 
+  @Post('files')
+  @UseInterceptors(FileInterceptor('file'))
   async uploadFile(
     @UploadedFile(
       new ParseFilePipe({
         fileIsRequired: true,
       }),
     )
-    file: Express.Multer.File, 
-    @Body('folderId') folderId?: string
+    file: Express.Multer.File,
+    @Body('folderId') folderId?: string,
   ): Promise<drive_v3.Schema$File> {
     return this.googleDriveService.uploadFile(file, folderId);
   }
