@@ -1,10 +1,14 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { MulterModule } from '@nestjs/platform-express';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { GoogleDriveModule } from './google-drive/google-drive.module';
 import { Record } from './records/entities/record.entity';
 import { RecordsModule } from './records/records.module';
+
+const applicationModules = [RecordsModule, GoogleDriveModule];
 
 @Module({
   imports: [
@@ -27,7 +31,10 @@ import { RecordsModule } from './records/records.module';
         autoLoadEntities: true,
       }),
     }),
-    RecordsModule,
+    MulterModule.register({
+      dest: './uploads_tmp', // Temporary folder to uplodas
+    }),
+    ...applicationModules,
   ],
   controllers: [AppController],
   providers: [AppService],
