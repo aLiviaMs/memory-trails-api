@@ -11,6 +11,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { PaginatedResult } from '../common/interfaces/paginated-result.interface';
+import { OptionalBooleanPipe } from '../common/pipes/custom-boolean.pipe';
 import { CreateRecordDto } from './dto/create-record.dto';
 import { UpdateRecordDto } from './dto/update-record.dto';
 import { Record } from './entities/record.entity';
@@ -31,6 +32,8 @@ export class RecordsController {
     @Query('size', new DefaultValuePipe(10), ParseIntPipe) size: number = 10,
     @Query('sortBy', new DefaultValuePipe('ASC'))
     sortBy: 'ASC' | 'DESC' = 'ASC',
+    @Query('isFavorite', OptionalBooleanPipe)
+    isFavorite?: boolean,
   ): Promise<PaginatedResult<Record>> {
     return this.recordsService.findAll({ page, size, sortBy });
   }

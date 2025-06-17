@@ -25,14 +25,23 @@ export class RecordsService {
   }
 
   async findAll(options: PaginationOptions): Promise<PaginatedResult<Record>> {
-    const { page, size, sortBy } = options;
+    const { page, size, sortBy, isFavorite } = options;
 
     const validatedPage = page > 0 ? page : 1;
     const validatedSize = size > 0 ? size : 10;
 
     const skip = (validatedPage - 1) * validatedSize;
 
+    // Constrói as condições de busca dinamicamente
+    const whereConditions: any = {};
+    
+    // Adiciona filtro de favorito apenas se o parâmetro foi fornecido
+    if (isFavorite !== undefined) {
+      whereConditions.isFavorite = isFavorite;
+    }
+
     const [result, total] = await this.recordRepository.findAndCount({
+      where: whereConditions,
       take: validatedSize,
       skip: skip,
       order: {
@@ -42,7 +51,7 @@ export class RecordsService {
 
     return {
       data: result,
-      count: total,
+      count: validatedSize,
       currentPage: validatedPage,
       totalPages: Math.ceil(total / validatedSize),
     };
