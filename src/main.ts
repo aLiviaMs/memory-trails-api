@@ -6,6 +6,11 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger'; // <--- ADICIO
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  app.enableCors({
+    origin: true, // true for all origins (not recommended for production)
+    credentials: false, // true, if we need cookies/auth headers
+  });
+
   // Sua configuração existente do ValidationPipe (MANTIDA)
   app.useGlobalPipes(
     new ValidationPipe({
