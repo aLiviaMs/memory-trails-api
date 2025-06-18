@@ -52,8 +52,11 @@ export class RecordsService {
     return {
       data: result,
       count: validatedSize,
-      currentPage: validatedPage,
-      totalPages: Math.ceil(total / validatedSize),
+      meta: {
+          total: total,
+          page: validatedPage,
+          limit: Math.ceil(total / validatedSize),
+      }
     };
   }
 
