@@ -174,4 +174,65 @@ export class GoogleDriveService {
       );
     }
   }
+
+    /**
+     * Realiza o upload de múltiplos arquivos para o Google Drive em paralelo.
+     * @param files - Array de arquivos recebidos via Multer.
+     * @param folderId - O ID da pasta de destino no Google Drive.
+     * @returns Um objeto com os resultados dos uploads.
+     */
+    async uploadBulkFiles(
+      files: Array<Express.Multer.File>,
+      folderId?: string,
+    ): Promise<{
+      successfulUploads: drive_v3.Schema$File[];
+      failedUploads: { fileName: string; error: string }[];
+    }> {
+      if (!files || files.length === 0) {
+        throw new BadRequestException('Nenhum arquivo fornecido para upload.');
+      }
+
+      const parentFolderId = folderId ?? (this.rootFolderId as string);
+
+      // Mapeia cada arquivo para uma promessa de upload
+      const uploadPromises = files.map((file) => {
+        const fileMetadata: drive_v3.Schema$File = {
+          name: file.originalname,
+          parents: [parentFolderId],
+        };
+
+        const media = {
+          mimeType: file.mimetype,
+          body: createStreamFromBuffer(file.buffer),
+        };
+
+        return this.drive.files.create({
+          requestBody: fileMetadata,
+          media: media,
+          fields: 'id, name, mimeType, webViewLink, iconLink, size, parents',
+        });
+      });
+
+      // Executa todas as promessas em paralelo e aguarda a conclusão de todas
+      const results = await Promise.allSettled(uploadPromises);
+
+      const successfulUploads: drive_v3.Schema$File[] = [];
+      const failedUploads: { fileName: string; error: string }[] = [];
+
+      // Processa os resultados para separar sucessos e falhas
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          successfulUploads.push(result.value.data);
+        } else {
+          // Captura informações do erro para fornecer um feedback claro
+          failedUploads.push({
+            fileName: files[index].originalname,
+            error:
+              result.reason?.message || 'Ocorreu um erro desconhecido durante o upload.',
+          });
+        }
+      });
+
+      return { successfulUploads, failedUploads };
+    }
 }

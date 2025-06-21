@@ -10,9 +10,11 @@ import {
   Post,
   Query,
   UploadedFile,
+  UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { drive_v3 } from 'googleapis';
 import { CreateFolderDto } from './dto/create-folder.dto';
 import { GoogleDriveService } from './google-drive.service';
@@ -67,6 +69,24 @@ export class GoogleDriveController {
     @Body('folderId') folderId?: string,
   ): Promise<drive_v3.Schema$File> {
     return this.googleDriveService.uploadFile(file, folderId);
+  }
+
+  /**
+   * Realiza o upload de múltiplos arquivos em lote para o Google Drive.
+   * @param files - Array de arquivos a serem enviados.
+   * @param folderId - O ID da pasta no Google Drive onde os arquivos serão salvos.
+   * @returns Um objeto contendo listas de uploads bem-sucedidos e falhos.
+   */
+  @Post('files/bulk')
+  @UseInterceptors(FilesInterceptor('files')) // Use 'files' (plural) como a chave do form-data
+  async uploadBulkFiles(
+    @UploadedFiles() files: Array<Express.Multer.File>,
+    @Body('folderId') folderId?: string,
+  ): Promise<{
+    successfulUploads: drive_v3.Schema$File[];
+    failedUploads: { fileName: string; error: string }[];
+  }> {
+    return this.googleDriveService.uploadBulkFiles(files, folderId);
   }
 
   @Delete('files/:id')
