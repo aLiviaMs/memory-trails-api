@@ -35,7 +35,7 @@ export class RecordsController {
     @Query('isFavorite', OptionalBooleanPipe)
     isFavorite?: boolean,
   ): Promise<PaginatedResult<Record>> {
-    return this.recordsService.findAll({ page, size, sortBy });
+    return this.recordsService.findAll({ page, size, sortBy, isFavorite });
   }
 
   @Get(':id')
